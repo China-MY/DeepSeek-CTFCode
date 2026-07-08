@@ -6,8 +6,7 @@
     "ctfcode": "npm/deepseek-ctfcode/bin/ctfcode.js"
   },
   "files": [
-    "npm/deepseek-ctfcode/bin/ctfcode.js",
-    "npm/deepseek-ctfcode/scripts/install.js"
+    "npm/deepseek-ctfcode/bin/ctfcode.js"
   ],
   "engines": {
     "node": ">=18"
@@ -21,17 +20,6 @@
   "bugs": {
     "url": "https://github.com/China-MY/DeepSeek-CTFCode/issues"
   },
-  "keywords": [
-    "deepseek",
-    "ctf",
-    "pentest",
-    "渗透测试",
-    "security",
-    "agent",
-    "cli"
-  ],
-  "scripts": {
-    "postinstall": "node npm/deepseek-ctfcode/scripts/install.js"
-  },
+  "keywords": ["deepseek", "ctf", "pentest", "渗透测试", "security", "agent", "cli"],
   "author": "Mr.明裕"
 }
