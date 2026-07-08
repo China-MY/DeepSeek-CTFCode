@@ -1,0 +1,37 @@
+{
+  "name": "deepseek-ctfcode",
+  "version": "1.0.0",
+  "description": "CTF渗透测试多Agent协作系统 — AI驱动的智能渗透测试平台",
+  "bin": {
+    "ctfcode": "npm/deepseek-ctfcode/bin/ctfcode.js"
+  },
+  "files": [
+    "npm/deepseek-ctfcode/bin/ctfcode.js",
+    "npm/deepseek-ctfcode/scripts/install.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/China-MY/DeepSeek-CTFCode#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/China-MY/DeepSeek-CTFCode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/China-MY/DeepSeek-CTFCode/issues"
+  },
+  "keywords": [
+    "deepseek",
+    "ctf",
+    "pentest",
+    "渗透测试",
+    "security",
+    "agent",
+    "cli"
+  ],
+  "scripts": {
+    "postinstall": "node npm/deepseek-ctfcode/scripts/install.js"
+  },
+  "author": "Mr.明裕"
+}
