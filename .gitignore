@@ -59,3 +59,10 @@ Thumbs.db
 /site/public/av/
 
 benchmarks/context-maintenance-e2e/run/
+knowledge_base/
+skills/
+Tools/
+npm/ctfcode/
+npm/deepseek-ctfcode/
+npm/platforms/
+reasonix.toml

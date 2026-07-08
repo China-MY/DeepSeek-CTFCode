@@ -6,7 +6,7 @@ package i18n
 var Chinese = Messages{
 	Subtitle:        "配置与插件驱动的 coding agent",
 	WelcomeTitleFmt: "欢迎使用 %s",
-	NoConfigYet:     "还没有配置 — 现在来设置一下吧。",
+	NoConfigYet:     "还没有配置 DeepSeek-CTFCode — 现在来设置渗透测试环境吧。",
 	StartingChatFmt: "正在启动 %s…",
 	SetKeyHint:      "设置好 API key 后运行 `reasonix`。",
 	ConfigLabel:     "配置",

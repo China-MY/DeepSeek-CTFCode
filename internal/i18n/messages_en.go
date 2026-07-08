@@ -5,7 +5,7 @@ package i18n
 var English = Messages{
 	Subtitle:        "config + plugin driven coding agent",
 	WelcomeTitleFmt: "Welcome to %s",
-	NoConfigYet:     "No configuration found yet — let's set it up.",
+	NoConfigYet:     "No configuration found — let's set up DeepSeek-CTFCode for pentesting.",
 	StartingChatFmt: "Starting %s…",
 	SetKeyHint:      "Set your API key, then run `reasonix`.",
 	ConfigLabel:     "config",

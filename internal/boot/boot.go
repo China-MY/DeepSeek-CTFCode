@@ -306,7 +306,15 @@ func Build(ctx context.Context, opts Options) (*control.Controller, error) {
 	allSkillStore := skill.New(skill.Options{ProjectRoot: root, CustomPaths: cfg.SkillCustomPaths(), ExcludedPaths: cfg.SkillExcludedPaths(), MaxDepth: cfg.SkillMaxDepth(), Stderr: io.Discard})
 	allSkills := allSkillStore.List()
 	if !tokenEconomy {
+	if !tokenEconomy {
 		sysPrompt = skill.ApplyIndex(sysPrompt, skills)
+		// Load key skill bodies directly into the system prompt so the AI has
+		// immediate access to the pentest methodology without needing run_skill.
+		if sk, ok := skillStore.Read("kali-pentest"); ok && sk.Body != "" {
+			sysPrompt += "\n\n# Mounted Skill: " + sk.Name + "\n\n" + sk.Body + "\n"
+		}
+	}
+
 	}
 
 	reg := tool.NewRegistry()

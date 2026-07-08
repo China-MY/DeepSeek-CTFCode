@@ -53,6 +53,14 @@ type chatTUI struct {
 	// nativeScrollback keeps Termux out of alt-screen mode so taps still focus
 	// the textarea and raise the soft keyboard.
 	nativeScrollback bool
+	// nodePanelWidth is the terminal columns reserved for the right-side pentest
+	// node flow panel. 0 disables it (narrow terminals). Set in Update() on
+	// WindowSizeMsg.
+	nodePanelWidth int
+	// nodePhase tracks the current penetration testing phase for the right panel.
+	// Updated by the statusline agent via REASONIX_CTF_PHASE.
+	nodePhase string
+
 	// mouseCaptureOff releases mouse ownership back to the terminal (View() sets
 	// tea.MouseModeNone instead of MouseModeCellMotion) so its native
 	// click-drag selection and right-click context menu work again. Toggled by
@@ -547,14 +555,23 @@ func newChatTUI(ctrl control.SessionAPI, missing string, eventCh chan event.Even
 	}
 }
 
+// nodePanelWidth is the terminal columns reserved for the right-side pentest
+// node flow panel. 0 means hidden (narrow terminal).
+const nodePanelWidth = 32
 func transcriptContentWidth(termW int, nativeScrollback bool) int {
-	if !nativeScrollback {
-		termW-- // reserve the last column for the transcript scrollbar
+
+	// Reserve space for the right-side node panel when the terminal is wide enough.
+	panelW := 0
+	if termW > nodePanelWidth+nodePanelWidth {
+		panelW = nodePanelWidth
 	}
-	return max(termW, 1)
+	w := termW - panelW
+	if !nativeScrollback {
+		w-- // reserve the last column for the transcript scrollbar
+	}
+	return max(w, 1)
 }
 
-// mouseCaptureOffByDefault lets a user opt out of in-app mouse capture for
 // every run (e.g. a terminal/multiplexer combo where the native right-click
 // menu and click-drag selection matter more than the scrollbar and
 // wheel-scroll) without having to type "/mouse" each session.
@@ -778,13 +795,19 @@ func (m chatTUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // transcript viewport sized, fed, and tail-following after every message.
 func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.input.SetWidth(msg.Width - 4)
+		// Right-side node panel: show when terminal is wide enough (≥86 cols)
+		if msg.Width > nodePanelWidth*2+20 {
+			m.nodePanelWidth = nodePanelWidth
+		} else {
+			m.nodePanelWidth = 0
+		}
+		m.input.SetWidth(msg.Width - 4 - m.nodePanelWidth)
 		contentW := transcriptContentWidth(msg.Width, m.nativeScrollback)
+
 		m.renderer = newMarkdownRenderer(contentW)
 		// Commit the banner — and a resumed session's transcript — once, now
 		// that the width is known.
@@ -1361,6 +1384,18 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case statuslineMsg:
 		m.statuslineOut = msg.out
+		// Detect pentest phase from statusline output
+		switch {
+		case strings.Contains(msg.out, "RECON"):
+			m.nodePhase = "recon"
+		case strings.Contains(msg.out, "EXPLOIT"):
+			m.nodePhase = "exploit"
+		case strings.Contains(msg.out, "REPORT"):
+			m.nodePhase = "report"
+		case strings.Contains(msg.out, "DONE"):
+			m.nodePhase = "complete"
+		}
+
 
 	case gitStatusMsg:
 		m.gitStatus = msg.status
@@ -2400,6 +2435,49 @@ func (m chatTUI) runningWorkingLine(cancelRequested, styled bool) string {
 	}
 	return working
 }
+// renderNodePanel renders the right-side pentest node flow panel.
+// Returns "" when the panel is hidden (narrow terminal).
+func (m chatTUI) renderNodePanel() string {
+	if m.nodePanelWidth <= 0 {
+		return ""
+	}
+	// Determine current phase from environment or state.
+	phase := m.nodePhase
+	if phase == "" {
+		phase = "idle"
+	}
+
+	// Node flow diagram
+	type node struct {
+		label string
+		emoji string
+		phase string
+	}
+	nodes := []node{
+		{"信息收集", "🔍", "recon"},
+		{"漏洞利用", "💥", "exploit"},
+		{"报告输出", "📋", "report"},
+	}
+
+	var b strings.Builder
+	b.WriteString("┌──── 渗透节点 ────┐\n")
+	for i, n := range nodes {
+		icon := "○"
+		if n.phase == phase {
+			icon = "●"
+		}
+		b.WriteString(fmt.Sprintf(" │ %s %s %s\n", icon, n.emoji, n.label))
+		if i < len(nodes)-1 {
+			b.WriteString(" │  │\n")
+		}
+	}
+	b.WriteString(" └" + strings.Repeat("─", m.nodePanelWidth-3) + "┘\n")
+
+	return lipgloss.NewStyle().
+		Width(m.nodePanelWidth).
+		Render(b.String())
+}
+
 
 func (m chatTUI) View() tea.View {
 	boxW := m.width
@@ -2599,7 +2677,12 @@ func (m chatTUI) View() tea.View {
 	if card := m.renderMainManager(); card != "" {
 		mainArea = m.renderTranscriptWithMainManager(card)
 	}
+	// Right-side node panel
+	if nodePanel := m.renderNodePanel(); nodePanel != "" {
+		mainArea = lipgloss.JoinHorizontal(lipgloss.Top, mainArea, nodePanel)
+	}
 	v := tea.NewView(mainArea + "\n" + strings.Join(parts, "\n"))
+
 	v.AltScreen = true
 	if m.mouseCaptureOff {
 		// Release the mouse to the terminal: native click-drag selection and

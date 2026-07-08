@@ -2,11 +2,10 @@ VERSION := $(shell git describe --tags --always 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 GOEXE := $(shell go env GOEXE)
 
-.PHONY: build vet fmt test desktop-test desktop-test-short desktop-test-times hooks cross clean
+.PHONY: build vet fmt test hooks cross clean npm-publish npm-build
 
 build:
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/ctfcode$(GOEXE) ./cmd/ctfcode
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/ctfcode-plugin-example$(GOEXE) ./cmd/reasonix-plugin-example
 
 vet:
 	go vet ./...
@@ -16,15 +15,6 @@ fmt:
 
 test:
 	go test ./...
-
-desktop-test:
-	cd desktop && go test .
-
-desktop-test-short:
-	cd desktop && go test -short .
-
-desktop-test-times:
-	cd desktop && go test -count=1 -json . | python3 ../scripts/desktop-test-times.py
 
 hooks:
 	@git config core.hooksPath .githooks
@@ -38,5 +28,18 @@ cross:
 		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -ldflags "$(LDFLAGS)" -o dist/ctfcode-$$os-$$arch$$ext ./cmd/ctfcode; \
 	done
 
+npm-build: build
+	./scripts/build-npm.sh
+
+npm-publish: npm-build
+	@echo "=== 发布平台包 ==="
+	@for pkg in npm/platforms/*/; do \
+		echo "发布 $$pkg"; \
+		(cd "$$pkg" && npm publish --access public) || true; \
+	done
+	@echo "=== 发布主包 ==="
+	cd npm/deepseek-ctfcode && npm publish --access public
+	@echo "=== 完成 ==="
+
 clean:
-	rm -rf bin dist
+	rm -rf bin dist npm/platforms/*/bin/* npm/deepseek-ctfcode/bin/ctfcode

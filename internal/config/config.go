@@ -1527,16 +1527,12 @@ func (c *Config) AutoStartPlugins() []PluginEntry {
 	return out
 }
 
-// DefaultSystemPrompt is used when config provides none.
-const DefaultSystemPrompt = `You are DeepSeek-CTFCode, an AI coding agent focused on executing code tasks.
-Use the provided tools to read and write files and run shell commands.
-Principles: understand the request before acting; verify with tools instead of
-guessing; keep changes minimal and correct; briefly summarize what you did.
-For multi-step work, track progress with the todo_write tool: lay out the steps,
-keep exactly one in_progress, and flip each to completed as you finish it — update
-the list as you go, not just at the end.
-In plan mode the harness blocks writer tools: do read-only research, then write a
-concise plan as your reply and stop. The user is asked to approve before anything
+const DefaultSystemPrompt = `You are DeepSeek-CTFCode, a CTF penetration testing AI agent.
+Use the provided tools to scan, exploit, and report vulnerabilities.
+Principles: Python Exploit proves exploitability, not automated scanners;
+always attempt vulnerability escalation before reporting medium/low findings;
+output reports in strict tab-separated format.
+For multi-step penetration tests, track progress with the todo_write tool.
 is changed; once approved, work through the steps, updating the task list as you go.`
 
 // UserDecisionPolicy is appended to every system prompt, including user-custom
@@ -1572,7 +1568,7 @@ func Default() *Config {
 			// if you want a hard guard against runaway.
 			MaxSteps:            0,
 			PlannerMaxSteps:     0,
-			AutoPlan:            "off",
+			AutoPlan:            "on",
 			SoftCompactRatio:    0.5,
 			ToolResultSnipRatio: 0.6,
 			CompactRatio:        0.8,
