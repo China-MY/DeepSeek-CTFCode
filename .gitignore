@@ -58,6 +58,9 @@ node_modules/
 # CodeGraph per-project index (rebuilt locally; never committed)
 .codegraph/
 
+# Temporary / log files
+fofamap.log
+
 # Editor / OS
 .DS_Store
 Thumbs.db
