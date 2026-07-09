@@ -222,6 +222,10 @@ DeepSeek-CTFCode/
 └── go.mod                         # Go 模块
 ```
 
+## 致谢
+
+感谢 [esengine/DeepSeek-Reasonix](https://github.com/esengine/DeepSeek-Reasonix.git) 原项目的出色工作，为本项目提供了坚实的基础与灵感。
+
 ## 作者
 
 - **Mr.明裕** — 项目作者与维护者

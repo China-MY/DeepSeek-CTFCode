@@ -31,7 +31,7 @@ import (
 	"ctfcode/internal/tool"
 	"ctfcode/internal/tool/builtin"
 
-	// Blank import registers the provider kind the same way cmd/reasonix's main
+	// Blank import registers the provider kind the same way cmd/ctfcode's main
 	// does; importing builtin above registers the built-in tools.
 	_ "ctfcode/internal/provider/openai"
 )

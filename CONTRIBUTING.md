@@ -1,6 +1,6 @@
-# Contributing to Reasonix
+# Contributing to DeepSeek-CTFCode
 
-Thank you for your interest in contributing to Reasonix! This guide covers
+Thank you for your interest in contributing to DeepSeek-CTFCode! This guide covers
 everything you need to get started.
 
 ## Prerequisites
@@ -12,9 +12,9 @@ everything you need to get started.
 ## Getting started
 
 ```bash
-git clone https://github.com/esengine/DeepSeek-Reasonix.git
-cd DeepSeek-Reasonix
-go build ./cmd/reasonix    # builds the CLI binary
+git clone https://github.com/China-MY/DeepSeek-CTFCode.git
+cd DeepSeek-CTFCode
+go build ./cmd/ctfcode    # builds the CLI binary
 go test ./...              # runs the full test suite
 ```
 
@@ -22,7 +22,7 @@ go test ./...              # runs the full test suite
 
 | Directory | Purpose |
 |-----------|---------|
-| `cmd/reasonix` | CLI entry point |
+| `cmd/ctfcode` | CLI entry point |
 | `internal/agent` | Agent loop, session, coordinator |
 | `internal/cli` | TUI, subcommands, setup wizard |
 | `internal/control` | Transport-agnostic controller |
@@ -33,7 +33,7 @@ go test ./...              # runs the full test suite
 | `internal/plugin` | MCP client (stdio + HTTP) |
 | `internal/event` | Typed event stream |
 | `internal/hook` | Shell hooks (PreToolUse, …) |
-| `internal/memory` | REASONIX.md hierarchy + auto-memory |
+| `internal/memory` | Memory hierarchy |
 | `internal/skill` | Skill discovery from Markdown |
 | `internal/sandbox` | OS-level sandboxing |
 | `internal/serve` | HTTP/SSE server frontend |
@@ -73,16 +73,16 @@ desktop tab state — so the two builds never interfere:
 **CLI**
 
 ```bash
-REASONIX_HOME=/tmp/reasonix-dev go run ./cmd/reasonix
+REASONIX_HOME=/tmp/reasonix-dev go run ./cmd/ctfcode
 # or after building:
-#   REASONIX_HOME=/tmp/reasonix-dev ./bin/reasonix
+#   REASONIX_HOME=/tmp/reasonix-dev ./bin/ctfcode
 ```
 
 **Desktop**
 
 ```bash
 cd desktop && wails build
-REASONIX_HOME=/tmp/reasonix-dev-isolated build/bin/reasonix-desktop
+REASONIX_HOME=/tmp/reasonix-dev-isolated build/bin/ctfcode-desktop
 ```
 
 On Windows, use `$env:REASONIX_HOME` in PowerShell or `set REASONIX_HOME=` in

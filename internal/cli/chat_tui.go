@@ -288,6 +288,10 @@ type chatTUI struct {
 	// skillPick is the interactive skill picker overlay for /skills. nil when closed.
 	skillPick *skillPicker
 
+	// knowledgePick is the interactive knowledge browser overlay for /knowledge browse.
+	// nil when closed.
+	knowledgePick *knowledgePicker
+
 	// buildController builds a fresh controller on a model ref, carrying prior
 	// history across and pinning auto-save to resumePath so the continued
 	// conversation stays in one file (set by chatREPL; it must NOT touch this
@@ -1027,6 +1031,10 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.skillPick != nil {
 			return m.handleSkillPickerKey(msg)
 		}
+		// The knowledge picker is modal while open: keys navigate it.
+		if m.knowledgePick != nil {
+			return m.handleKnowledgePickerKey(msg)
+		}
 		// A pending tool approval is modal: keystrokes answer it (y/a/n, Enter,
 		// Esc) rather than reaching the input.
 		if m.pendingApproval != nil {
@@ -1720,7 +1728,7 @@ func (m chatTUI) bottomRows() int {
 // reserve rows for a composer that cannot receive input, leaving a confusing
 // blank/bordered area at the bottom of the TUI.
 func (m chatTUI) hideComposer() bool {
-	if m.mcp != nil || m.clearConfirm != nil || m.mcpImport != nil || m.skillPick != nil || m.resumePick != nil || m.copyPick != nil || m.rewind != nil || m.pendingApproval != nil {
+	if m.mcp != nil || m.clearConfirm != nil || m.mcpImport != nil || m.skillPick != nil || m.knowledgePick != nil || m.resumePick != nil || m.copyPick != nil || m.rewind != nil || m.pendingApproval != nil {
 		return true
 	}
 	return m.chooser != nil && !m.chooser.typing
@@ -1740,6 +1748,9 @@ func (m chatTUI) renderMainManager() string {
 		return card
 	}
 	if card := m.renderClearConfirm(); card != "" {
+		return card
+	}
+	if card := m.renderKnowledgePicker(); card != "" {
 		return card
 	}
 	return m.renderSkillPicker()
@@ -1766,6 +1777,8 @@ func (m chatTUI) renderMainManagerFooter() string {
 		hint = "Enter confirm · y clear · n/Esc cancel"
 	case m.skillPick != nil:
 		hint = m.skillPickerFooterHint()
+	case m.knowledgePick != nil:
+		hint = m.knowledgePickerFooterHint()
 	}
 	if strings.TrimSpace(hint) == "" {
 		return ""
@@ -2536,6 +2549,8 @@ func (m chatTUI) View() tea.View {
 		status = "  " + modeTag + " · MCP"
 	case m.skillPick != nil:
 		status = "  " + modeTag + " · " + i18n.M.SkillPickerStatusLabel
+	case m.knowledgePick != nil:
+		status = "  " + modeTag + " · Knowledge"
 	case m.chooser != nil:
 		status = "  " + modeTag + " · " + i18n.M.ChatStatusQuestion
 	case m.pendingApproval != nil && m.pendingApproval.Tool == planApprovalTool:
@@ -3083,6 +3098,8 @@ func (m chatTUI) computeStatusLineCount(width int) int {
 		status += " · MCP"
 	case m.skillPick != nil:
 		status += " · " + i18n.M.SkillPickerStatusLabel
+	case m.knowledgePick != nil:
+		status += " · Knowledge"
 	case m.chooser != nil:
 		status += " · " + i18n.M.ChatStatusQuestion
 	case m.pendingApproval != nil && m.pendingApproval.Tool == planApprovalTool:
@@ -3691,6 +3708,9 @@ func (m *chatTUI) runSlashCommand(input string) tea.Cmd {
 		if m.pendingModelSwitch != nil {
 			return m.pendingModelSwitch
 		}
+	case "/knowledge", "/kb":
+		m.echoLocalCommand(input)
+		m.runKnowledgeSubcommand(input)
 	case "/hooks":
 		m.echoLocalCommand(input)
 		m.runHooksSubcommand(input)

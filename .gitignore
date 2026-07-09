@@ -43,10 +43,17 @@ node_modules/
 .pnpm-store/
 .npm/
 
-# Project-local ctfcode state; keep the checked-in review command.
+# Project-local ctfcode state; keep the checked-in prompts, knowledge, and statusline.
 /.ctfcode/*
+!/.ctfcode/prompts/
+!/.ctfcode/prompts/*.md
+!/.ctfcode/knowledge/
+!/.ctfcode/knowledge/*.md
+!/.ctfcode/output-styles/
+!/.ctfcode/output-styles/*.md
+!/.ctfcode/statusline.sh
 !/.ctfcode/commands/
-!/.ctfcode/commands/review.md
+!/.ctfcode/commands/*.md
 
 # CodeGraph per-project index (rebuilt locally; never committed)
 .codegraph/

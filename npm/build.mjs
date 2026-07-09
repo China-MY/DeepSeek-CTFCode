@@ -46,7 +46,7 @@ for (const t of TARGETS) {
       `-s -w -X main.version=${binaryVersion}`,
       "-o",
       join(dir, "bin", exe),
-      "./cmd/reasonix",
+      "./cmd/ctfcode",
     ],
     {
       cwd: ROOT,

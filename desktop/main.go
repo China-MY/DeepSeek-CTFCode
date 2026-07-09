@@ -21,7 +21,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
 	// Blank imports wire compile-time built-ins into their registries, exactly as
-	// cmd/reasonix does — boot.Build resolves providers/tools from these registries.
+	// cmd/ctfcode does — boot.Build resolves providers/tools from these registries.
 	_ "ctfcode/internal/provider/anthropic"
 	_ "ctfcode/internal/provider/openai"
 	"ctfcode/internal/sandbox"
@@ -47,7 +47,7 @@ func runWindowsSandboxHelperIfRequested(argv []string) (int, bool) {
 var assets embed.FS
 
 // version is injected at build time via `wails build -ldflags "-X main.version=..."`,
-// mirroring cmd/reasonix/main.go. The auto-updater reads it (App.Version) to compare
+// mirroring cmd/ctfcode/main.go. The auto-updater reads it (App.Version) to compare
 // against the published manifest; an un-injected dev build stays "dev" and never
 // prompts to update.
 var version = "dev"
