@@ -3558,7 +3558,7 @@ func (m *chatTUI) ingestEvent(e event.Event) {
 				}
 				break
 			}
-			m.commitLine(toolCard(e.Tool.Name, e.Tool.Args, m.width))
+			m.commitLine(toolCard(e.Tool.Name, e.Tool.Args, m.width, m.label))
 			m.beginToolRunning(e.Tool.ID)
 		}
 

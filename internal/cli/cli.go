@@ -996,6 +996,45 @@ func interactiveSetup(configPath, envPath string) int {
 		}
 	}
 
+	// If multi-agent is configured, let user pick per-agent models.
+	if len(cfg.Agents) > 0 {
+		scanner := bufio.NewScanner(os.Stdin)
+		ans := ask(scanner, os.Stdout,
+			fmt.Sprintf("是否要配置 %d 个 Agent 各自使用的模型？(y/N): ", len(cfg.Agents)), "y/N")
+		if ans == "y" || ans == "Y" {
+			type modelOption struct{ provider, model string }
+			var modelOpts []modelOption
+			for _, p := range enabled {
+				for _, m := range p.Models {
+					modelOpts = append(modelOpts, modelOption{p.Name, m})
+				}
+			}
+			if len(modelOpts) == 0 {
+				for _, p := range enabled {
+					modelOpts = append(modelOpts, modelOption{p.Name, p.DefaultModel()})
+				}
+			}
+			for i, agent := range cfg.Agents {
+				items := make([]menuItem, len(modelOpts))
+				for j, mo := range modelOpts {
+					items[j] = menuItem{name: mo.provider + "/" + mo.model}
+				}
+				idx, err := selectOne(
+					fmt.Sprintf("选择「%s」(%s) 使用的模型", agent.Name, agent.Role),
+					items)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "  %s\n", dim("跳过 Agent 配置"))
+					continue
+				}
+				selected := modelOpts[idx]
+				cfg.Agents[i].Provider = selected.provider
+				cfg.Agents[i].Model = selected.model
+				fmt.Printf("  %s %s → %s/%s\n",
+					green("✓"), agent.Name, selected.provider, selected.model)
+			}
+		}
+	}
+
 	if err := cfg.SaveTo(configPath); err != nil {
 		fmt.Fprintln(os.Stderr, i18n.M.WriteConfigErr, err)
 		return 1

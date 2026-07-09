@@ -155,8 +155,17 @@ func argList(v any) string {
 }
 
 // toolCard renders the dispatch line: "  ⏺ Verb(arg)", arg clamped to width.
-func toolCard(name, args string, width int) string {
-	return "  " + toolDot(name) + " " + toolHead(name, toolArg(name, args), width)
+// When modelName is non-empty, appends a dim "[model]" tag.
+func toolCard(name, args string, width int, modelName string) string {
+	card := "  " + toolDot(name) + " " + toolHead(name, toolArg(name, args), width)
+	if modelName != "" {
+		tag := " " + dim("["+modelName+"]")
+		// Ensure the tag fits within the available width.
+		if len(card)+visibleWidth(tag) < width {
+			card += tag
+		}
+	}
+	return card
 }
 
 // toolHead builds "Verb(arg)" with the verb bold and the arg clamped to fit the
