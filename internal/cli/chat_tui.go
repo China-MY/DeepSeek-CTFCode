@@ -60,6 +60,12 @@ type chatTUI struct {
 	// nodePhase tracks the current penetration testing phase for the right panel.
 	// Updated by the statusline agent via REASONIX_CTF_PHASE.
 	nodePhase string
+	// nodeSubStep tracks the current sub-step within the phase (e.g. "port-scan",
+	// "cve-match", "exploit-dev", "evidence"). Updated via REASONIX_CTF_SUBSTEP.
+	nodeSubStep string
+	// nodePhasesCompleted tracks phases that have been finished. Set when the
+	// agent transitions to the next phase or via REASONIX_CTF_PHASE=complete.
+	nodePhasesCompleted map[string]bool
 
 	// mouseCaptureOff releases mouse ownership back to the terminal (View() sets
 	// tea.MouseModeNone instead of MouseModeCellMotion) so its native
@@ -1393,15 +1399,41 @@ func (m chatTUI) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case statuslineMsg:
 		m.statuslineOut = msg.out
 		// Detect pentest phase from statusline output
+		var newPhase string
 		switch {
 		case strings.Contains(msg.out, "RECON"):
-			m.nodePhase = "recon"
+			newPhase = "recon"
 		case strings.Contains(msg.out, "EXPLOIT"):
-			m.nodePhase = "exploit"
+			newPhase = "exploit"
 		case strings.Contains(msg.out, "REPORT"):
-			m.nodePhase = "report"
+			newPhase = "report"
 		case strings.Contains(msg.out, "DONE"):
-			m.nodePhase = "complete"
+			newPhase = "complete"
+		}
+		// Phase changed: mark previous phase as completed.
+		if newPhase != "" && newPhase != m.nodePhase {
+			if m.nodePhase != "" && m.nodePhase != "idle" && m.nodePhase != "complete" {
+				if m.nodePhasesCompleted == nil {
+					m.nodePhasesCompleted = map[string]bool{}
+				}
+				m.nodePhasesCompleted[m.nodePhase] = true
+			}
+			m.nodePhase = newPhase
+		}
+		// Parse sub-step from statusline output
+		if parts := strings.Fields(msg.out); len(parts) >= 2 {
+			for _, p := range parts {
+				if p == "|" || p == "│" {
+					break
+				}
+				if p != m.nodePhase && !strings.ContainsAny(p, "○●🔍💥📋✅⏳") && len(p) > 2 {
+					m.nodeSubStep = p
+					break
+				}
+			}
+		}
+		if m.nodePhase == "idle" || m.nodePhase == "complete" {
+			m.nodeSubStep = ""
 		}
 
 
@@ -2448,43 +2480,100 @@ func (m chatTUI) runningWorkingLine(cancelRequested, styled bool) string {
 	}
 	return working
 }
-// renderNodePanel renders the right-side pentest node flow panel.
-// Returns "" when the panel is hidden (narrow terminal).
+// renderNodePanel renders the right-side pentest node flow panel with
+// dynamic sub-steps and phase tracking. Returns "" when hidden (narrow terminal).
 func (m chatTUI) renderNodePanel() string {
 	if m.nodePanelWidth <= 0 {
 		return ""
 	}
-	// Determine current phase from environment or state.
 	phase := m.nodePhase
 	if phase == "" {
 		phase = "idle"
 	}
 
-	// Node flow diagram
+	// Define phases with sub-steps that the Agent can signal via REASONIX_CTF_SUBSTEP.
+	type subStep struct{ label, key string }
 	type node struct {
-		label string
-		emoji string
-		phase string
+		label    string
+		emoji    string
+		key      string
+		subSteps []subStep
 	}
 	nodes := []node{
-		{"信息收集", "🔍", "recon"},
-		{"漏洞利用", "💥", "exploit"},
-		{"报告输出", "📋", "report"},
+		{"信息收集", "🔍", "recon", []subStep{
+			{"资产发现", "asset"}, {"端口扫描", "port-scan"}, {"指纹识别", "fingerprint"},
+			{"CVE匹配", "cve-match"}, {"JS分析", "js-analyze"}, {"目录枚举", "dir-enum"},
+		}},
+		{"漏洞利用", "💥", "exploit", []subStep{
+			{"PoC开发", "poc-dev"}, {"漏洞验证", "verify"},
+			{"权限提升", "escalation"}, {"数据获取", "exfil"},
+		}},
+		{"报告输出", "📋", "report", []subStep{
+			{"证据整理", "evidence"}, {"报告生成", "report-gen"},
+		}},
 	}
 
 	var b strings.Builder
-	b.WriteString("┌──── 渗透节点 ────┐\n")
+	panelW := m.nodePanelWidth
+	if panelW < 24 {
+		panelW = 24
+	}
+
+	// Title bar
+	b.WriteString("┌─ 渗透节点 ")
+	b.WriteString(strings.Repeat("─", max(0, panelW-12)))
+	b.WriteString("┐\n")
+
+	// Phase flow overview line: ✅ completed · ● current · ○ pending
+	flowLine := " │ "
 	for i, n := range nodes {
-		icon := "○"
-		if n.phase == phase {
-			icon = "●"
+		if m.nodePhasesCompleted[n.key] {
+			flowLine += "✅" + n.emoji
+		} else if n.key == phase {
+			flowLine += "●" + n.emoji
+		} else {
+			flowLine += "○" + n.emoji
 		}
-		b.WriteString(fmt.Sprintf(" │ %s %s %s\n", icon, n.emoji, n.label))
 		if i < len(nodes)-1 {
-			b.WriteString(" │  │\n")
+			flowLine += "→"
 		}
 	}
-	b.WriteString(" └" + strings.Repeat("─", m.nodePanelWidth-3) + "┘\n")
+	b.WriteString(flowLine)
+	b.WriteString("\n")
+
+	// Sub-steps for the current phase
+	for _, n := range nodes {
+		if n.key != phase {
+			continue
+		}
+		for _, s := range n.subSteps {
+			icon := "  ○"
+			if s.key == m.nodeSubStep {
+				icon = "  ▶"
+			}
+			label := s.label
+			maxLabel := panelW - 8
+			if len([]rune(label)) > maxLabel {
+				label = string([]rune(label)[:maxLabel])
+			}
+			b.WriteString(fmt.Sprintf(" │%s %s\n", icon, label))
+		}
+	}
+
+	// Progress summary
+	completed := 0
+	for _, n := range nodes {
+		if m.nodePhasesCompleted[n.key] {
+			completed++
+		}
+	}
+	if completed > 0 && phase != "complete" && phase != "idle" {
+		b.WriteString(fmt.Sprintf(" │ ✓ %d/%d 阶段完成\n", completed, len(nodes)))
+	} else if phase == "complete" {
+		b.WriteString(" │ ✅ 全部完成!\n")
+	}
+
+	b.WriteString(" └" + strings.Repeat("─", max(0, panelW-2)) + "┘")
 
 	return lipgloss.NewStyle().
 		Width(m.nodePanelWidth).
