@@ -25,6 +25,14 @@ type ExperienceProvider interface {
 	RecordExperience(agentID, task, outcome string, lessons, patterns []string)
 }
 
+// HandoffApprover is called before a handoff is executed, allowing the
+// frontend to request user confirmation before switching agents.
+type HandoffApprover interface {
+	// RequestHandoffApproval asks the user to approve a handoff.
+	// Returns true if approved, false if rejected.
+	RequestHandoffApproval(ctx context.Context, from, to, task string) (bool, error)
+}
+
 // Orchestrator manages multiple Agent instances in a multi-agent session.
 // It implements the Runner interface so it can be used anywhere a single Agent
 // or Coordinator is used.
@@ -53,6 +61,8 @@ type Orchestrator struct {
 
 	// handoffBus is shared with handoff_to_agent and task_complete tools
 	handoffBus *tool.HandoffBus
+	// handoffApprover is called before executing a handoff to request user approval.
+	handoffApprover HandoffApprover
 	// knowledgeBase provides mounted knowledge entries for agent context.
 	knowledgeBase KnowledgeProvider
 
@@ -75,6 +85,14 @@ type OrchestratorOption func(*Orchestrator)
 func WithHandoffBus(bus *tool.HandoffBus) OrchestratorOption {
 	return func(o *Orchestrator) {
 		o.handoffBus = bus
+	}
+}
+
+// WithHandoffApprover sets the handoff approval callback for the orchestrator.
+// When set, every handoff_to_agent call will first request user approval.
+func WithHandoffApprover(a HandoffApprover) OrchestratorOption {
+	return func(o *Orchestrator) {
+		o.handoffApprover = a
 	}
 }
 
@@ -345,10 +363,23 @@ func (o *Orchestrator) Run(ctx context.Context, input string) error {
 					Level: event.LevelWarn,
 					Text:  fmt.Sprintf("orchestrator: agent %q cannot hand off to %q (not in allowed_handoffs)", o.activeID, targetID),
 				})
-				// Fall through and let the runErr propagate.
 			} else {
-				// Inject the handoff message into the target agent's session
-				// so it has context about why it was called.
+				// Request user approval before executing the handoff.
+				if o.handoffApprover != nil {
+					approved, err := o.handoffApprover.RequestHandoffApproval(ctx, o.activeID, targetID, task)
+					if err != nil {
+						return fmt.Errorf("orchestrator: handoff approval: %w", err)
+					}
+					if !approved {
+						o.sink.Emit(event.Event{
+							Kind: event.Notice,
+							Text: fmt.Sprintf("handoff from %s to %s rejected by user", o.activeID, targetID),
+						})
+						return runErr
+					}
+				}
+
+				// Inject the handoff message into the target agent's session.
 				targetAgent, err := o.agentForID(ctx, targetID)
 				if err != nil {
 					return fmt.Errorf("orchestrator: handoff target %q: %w", targetID, err)
@@ -365,9 +396,9 @@ func (o *Orchestrator) Run(ctx context.Context, input string) error {
 
 				o.sink.Emit(event.Event{
 					Kind: event.Phase,
-					Text: fmt.Sprintf("handoff: %s → %s (%s)", o.activeID, targetID, task),
+					Text: fmt.Sprintf("handoff: %s -> %s (%s)", o.activeID, targetID, task),
 				})
-				continue // loop to run the new agent
+				continue
 			}
 		}
 
@@ -416,6 +447,11 @@ func (o *Orchestrator) HasAgent(id string) bool {
 	}
 	_, ok := o.agentConfigs[id]
 	return ok
+}
+
+// SetHandoffApprover sets the handoff approval callback.
+func (o *Orchestrator) SetHandoffApprover(a HandoffApprover) {
+	o.handoffApprover = a
 }
 
 // SetPlanMode propagates the plan mode setting to all created agents.

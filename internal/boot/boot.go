@@ -1254,7 +1254,15 @@ func Build(ctx context.Context, opts Options) (*control.Controller, error) {
 	if classifier != nil {
 		ctrlOpts.Classifier = classifier
 	}
-	return control.New(ctrlOpts), nil
+	ctrl := control.New(ctrlOpts)
+
+	// Wire handoff approval: when multi-agent mode is active, the Controller
+	// acts as the handoff approver so users can confirm agent transitions.
+	if orch, ok := runner.(*agent.Orchestrator); ok && orch != nil {
+		orch.SetHandoffApprover(ctrl)
+	}
+
+	return ctrl, nil
 }
 
 func rememberPermissionRule(workspaceRoot, rule string) control.RememberResult {

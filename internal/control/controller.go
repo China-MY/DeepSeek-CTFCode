@@ -4563,6 +4563,24 @@ func parseRewind(args string, cps []checkpoint.Meta) (int, RewindScope, error) {
 	return turn, scope, nil
 }
 
+const handoffApprovalTool = "handoff_approval"
+
+// RequestHandoffApproval implements agent.HandoffApprover.
+// It asks the user to approve or reject a handoff between agents.
+func (c *Controller) RequestHandoffApproval(ctx context.Context, from, to, task string) (bool, error) {
+	subject := fmt.Sprintf("handoff %s → %s", from, to)
+	args, _ := json.Marshal(map[string]string{
+		"from": from,
+		"to":   to,
+		"task": task,
+	})
+	allow, _, err := c.requestApproval(ctx, handoffApprovalTool, subject, args)
+	if err != nil {
+		return false, err
+	}
+	return allow, nil
+}
+
 // requestApproval emits an ApprovalRequest and blocks until Approve(ID, …)
 // answers or ctx is cancelled. A prior session grant (or a bypass posture) for
 // the same approval scope short-circuits. The approvalManager's promptMu

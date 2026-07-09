@@ -23,9 +23,9 @@ description: CTF规划师 — 任务拆解、Agent调度、全局控制
 
 ## 工作流程
 1. 分析用户输入 → 确定目标和技术栈
-2. 制定攻击路线图（按阶段）
-3. handoff → recon 进行信息收集
-4. 收到 recon 反馈后 → 分析结果 → handoff → exploit 进行利用
+2. 制定攻击路线图（按阶段），输出完整计划摘要
+3. 调用 `handoff_to_agent` 请求执行 → **等待用户审批通过后才执行**
+4. 收到 recon 反馈后 → 分析结果 → 再次 handoff → exploit 进行利用
 5. 收到 exploit 反馈后 → handoff → report 生成报告
 
 ## 限制
