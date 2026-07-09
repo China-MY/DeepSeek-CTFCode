@@ -1713,7 +1713,6 @@ func (m *chatTUI) commitSpacer() {
 func (m chatTUI) bottomRows() int {
 	rows := 0
 	for _, s := range []string{
-		m.renderTodoPanel(),
 		m.renderApprovalBanner(),
 		m.renderChooser(),
 		m.renderRewind(),
@@ -2581,6 +2580,16 @@ func (m chatTUI) renderNodePanel() string {
 }
 
 
+// renderRightPanel renders the todo task list on the right side.
+// Returns "" when hidden (narrow terminal) or no tasks.
+func (m chatTUI) renderRightPanel() string {
+	if m.nodePanelWidth <= 0 {
+		return ""
+	}
+	return m.renderTodoPanel()
+}
+
+
 func (m chatTUI) View() tea.View {
 	boxW := m.width
 	if boxW < 10 {
@@ -2702,10 +2711,6 @@ func (m chatTUI) View() tea.View {
 	// transcriptHeight so the viewport above fills exactly the rest of the screen.
 	var parts []string
 	rowsAboveBox := 0 // terminal rows occupied by panels/working line before the composer
-	if todo := m.renderTodoPanel(); todo != "" {
-		parts = append(parts, todo)
-		rowsAboveBox += strings.Count(todo, "\n") + 1
-	}
 	if banner := m.renderApprovalBanner(); banner != "" {
 		parts = append(parts, banner)
 		rowsAboveBox += strings.Count(banner, "\n") + 1
@@ -2781,9 +2786,9 @@ func (m chatTUI) View() tea.View {
 	if card := m.renderMainManager(); card != "" {
 		mainArea = m.renderTranscriptWithMainManager(card)
 	}
-	// Right-side node panel
-	if nodePanel := m.renderNodePanel(); nodePanel != "" {
-		mainArea = lipgloss.JoinHorizontal(lipgloss.Top, mainArea, nodePanel)
+	// Right-side panel: todo list + node flow
+	if rightPanel := m.renderRightPanel(); rightPanel != "" {
+		mainArea = lipgloss.JoinHorizontal(lipgloss.Top, mainArea, rightPanel)
 	}
 	v := tea.NewView(mainArea + "\n" + strings.Join(parts, "\n"))
 
