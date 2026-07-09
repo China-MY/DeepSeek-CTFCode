@@ -68,7 +68,7 @@ make build
 ./bin/ctfcode run "对 target.com 进行渗透测试"
 
 # 指定模型
-./bin/ctfcode --model deepseek-chat
+./bin/ctfcode --model deepseek-v4-flash
 ```
 
 ### 5. 用户配置
@@ -161,8 +161,8 @@ output_style = "ctf-pentest"
 name = "deepseek"
 kind = "openai"
 base_url = "https://api.deepseek.com"
-models = ["deepseek-reasoner", "deepseek-chat"]
-default = "deepseek-chat"
+models = ["deepseek-v4-pro", "deepseek-v4-flash"]
+default = "deepseek-v4-flash"
 api_key_env = "DEEPSEEK_API_KEY"
 balance_url = "https://api.deepseek.com/user/balance"
 
@@ -170,7 +170,7 @@ balance_url = "https://api.deepseek.com/user/balance"
 [[agents]]
 id = "planner"
 name = "规划师"
-model = "deepseek-reasoner"
+model = "deepseek-v4-pro"
 # ...
 ```
 
