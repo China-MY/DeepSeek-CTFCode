@@ -132,7 +132,7 @@ func main() {
 	}
 
 	err := wails.Run(&options.App{
-		Title:     "Reasonix",
+		Title:     "DeepSeek-CTFCode",
 		Width:     width,
 		Height:    height,
 		Frameless: goruntime.GOOS == "windows",
@@ -178,7 +178,7 @@ func main() {
 			WebviewGpuIsDisabled: windowsWebview2GPUDisabled(),
 		},
 		Linux: &linux.Options{
-			ProgramName: "Reasonix",
+			ProgramName: "DeepSeek-CTFCode",
 			// WebKitGTK GPU compositing is inconsistent across distros/drivers and
 			// is the one real cross-platform rough edge for a Go+webview stack:
 			// "always" can yield blank or flickering webviews on some setups, so
