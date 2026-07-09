@@ -158,11 +158,18 @@ auto_plan = "on"
 output_style = "ctf-pentest"
 
 [[providers]]
-name = "deepseek"
+name = "deepseek-flash"
 kind = "openai"
 base_url = "https://api.deepseek.com"
-models = ["deepseek-v4-pro", "deepseek-v4-flash"]
-default = "deepseek-v4-flash"
+model = "deepseek-v4-flash"
+api_key_env = "DEEPSEEK_API_KEY"
+balance_url = "https://api.deepseek.com/user/balance"
+
+[[providers]]
+name = "deepseek-pro"
+kind = "openai"
+base_url = "https://api.deepseek.com"
+model = "deepseek-v4-pro"
 api_key_env = "DEEPSEEK_API_KEY"
 balance_url = "https://api.deepseek.com/user/balance"
 
