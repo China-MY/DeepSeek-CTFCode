@@ -94,6 +94,18 @@ const (
 	// GuardianAssessment reports the outcome of a guardian sub-agent safety review.
 	// Carries GuardianResult payload (Outcome, RiskLevel, Rationale, etc.).
 	GuardianAssessment
+	// AdviserAssessment reports the outcome of an execution monitor (adviser)
+	// review of the agent's tool-call pattern. Carries AdviserResult payload
+	// (LoopDetection, SameToolCount, Guidance, etc.).
+	AdviserAssessment
+	// ReflectorAssessment reports when the reflector agent intervenes after
+	// repeated tool-call failures. Carries ReflectorResult payload
+	// (FailurePattern, RootCause, CorrectiveAction, etc.).
+	ReflectorAssessment
+	// TaskPlan carries the structured task plan produced by the intelligent
+	// planner before execution begins. Carries TaskPlanResult payload
+	// (Steps, Strategy, RiskAssessment, etc.).
+	TaskPlan
 	// KindCount is a sentinel one past the last real Kind. New event kinds must
 	// be inserted above it so completeness tests cover them automatically.
 	KindCount
@@ -205,6 +217,55 @@ type GuardianResult struct {
 	Pricing           *provider.Pricing // for cost display (nil = omit cost)
 }
 
+// AdviserResult carries the outcome of an execution monitor (adviser) review.
+// Emitted with Kind=AdviserAssessment after each tool-call batch completes.
+type AdviserResult struct {
+	SameToolCount     int                // consecutive calls to the same tool
+	SameToolName      string             // the tool being repeated
+	IsLoop            bool               // true when a loop pattern is detected
+	TotalToolCalls    int                // total tool calls this turn so far
+	Guidance          string             // corrective guidance for the agent
+	DurationMs        int64              // adviser review wall-clock time
+	StuckOnError      bool               // true when the same error repeats
+	LastErrorFragment string             // snippet of the repeated error
+	Usage             *provider.Usage    // adviser token telemetry
+	Pricing           *provider.Pricing  // for cost display
+}
+
+// ReflectorResult carries the outcome of a reflector intervention.
+// Emitted with Kind=ReflectorAssessment when the reflector analyses failures.
+type ReflectorResult struct {
+	FailureCount     int                // consecutive failures triggering intervention
+	FailurePattern   string             // "tool_error" | "empty_turn" | "plan_stuck" | "loop"
+	RootCause        string             // AI analysis of root cause
+	CorrectiveAction string             // suggested corrective action
+	Guidance         string             // detailed guidance injected into context
+	DurationMs       int64              // reflector analysis wall-clock time
+	Usage            *provider.Usage    // reflector token telemetry
+	Pricing          *provider.Pricing  // for cost display
+}
+
+// TaskPlanStep is one step in a planned task decomposition.
+type TaskPlanStep struct {
+	ID              int    `json:"id"`
+	Description     string `json:"description"`
+	ToolsNeeded     string `json:"tools_needed,omitempty"`
+	ExpectedOutcome string `json:"expected_outcome,omitempty"`
+	RiskLevel       string `json:"risk_level,omitempty"`
+}
+
+// TaskPlanResult carries the structured plan from intelligent planning.
+// Emitted with Kind=TaskPlan before execution begins.
+type TaskPlanResult struct {
+	Steps          []TaskPlanStep
+	Strategy       string // overall strategy description
+	RiskAssessment string // overall risk assessment
+	TotalEstimated int    // estimated tool call budget
+	DurationMs     int64  // planning wall-clock time
+	Usage          *provider.Usage    // planner token telemetry
+	Pricing        *provider.Pricing  // for cost display
+}
+
 // AskAnswer is the user's reply to one AskQuestion: the chosen option label(s)
 // (a free-typed answer is carried as a single Selected entry).
 type AskAnswer struct {
@@ -234,6 +295,9 @@ const (
 	UsageSourceCompaction = "compaction"
 	UsageSourceClassifier = "classifier"
 	UsageSourceTitle      = "title"
+	UsageSourceAdviser    = "adviser"
+	UsageSourceReflector  = "reflector"
+	UsageSourcePlannerStep = "planner_step"
 )
 
 // Event is one increment in a turn's event stream. Read the field(s) documented
@@ -262,6 +326,9 @@ type Event struct {
 	Err          error      // TurnDone: non-nil on failure
 	Compaction   Compaction // Compaction
 	Guardian     GuardianResult
+	Adviser      AdviserResult   // AdviserAssessment
+	Reflector    ReflectorResult // ReflectorAssessment
+	TaskPlan     TaskPlanResult  // TaskPlan
 	RetryAttempt int // Retrying: 1-based attempt about to be made
 	RetryMax     int // Retrying: total attempts before giving up
 }

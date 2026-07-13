@@ -432,6 +432,18 @@ type Agent struct {
 	// stormSig: a model keeps doing the same successful write, so there is no
 	// error for the failure-only storm breaker to see.
 	repeatSuccessCounts map[string]int
+
+	// adviser monitors tool-call patterns for loop/error detection.
+	// Inspired by PentAGI's Execution Monitoring system. Non-nil when enabled.
+	adviser *Adviser
+
+	// reflector intervenes when repeated failures are detected.
+	// Inspired by PentAGI's Reflector integration. Non-nil when enabled.
+	reflector *Reflector
+
+	// taskPlanner generates structured plans before task execution.
+	// Inspired by PentAGI's Intelligent Task Planning. Non-nil when enabled.
+	taskPlanner *TaskPlanner
 }
 
 // KeepPolicy is a bitmask controlling which messages are preserved beyond the
@@ -885,6 +897,24 @@ type Options struct {
 	// UseMemoryCompilerLLMClassification 启用 LLM 分类来判断任务 vs 聊天
 	// 默认 false 时使用启发式分类器
 	UseMemoryCompilerLLMClassification bool
+
+	// AdviserSameToolLimit sets how many consecutive same-tool calls trigger a
+	// loop warning. 0 disables the adviser. Inspired by PentAGI Execution Monitoring.
+	AdviserSameToolLimit int
+	// AdviserTotalLimit sets the total tool-call threshold for a general warning.
+	AdviserTotalLimit int
+
+	// ReflectorMaxFailures sets how many consecutive failures trigger reflector
+	// intervention. 0 disables the reflector. Inspired by PentAGI Reflector.
+	ReflectorMaxFailures int
+	// ReflectorCooldownSecs sets the minimum seconds between reflector interventions.
+	ReflectorCooldownSecs int
+
+	// TaskPlannerEnabled enables intelligent task decomposition before execution.
+	// Inspired by PentAGI Intelligent Task Planning.
+	TaskPlannerEnabled bool
+	// TaskPlannerMaxSteps caps the number of steps in a generated plan.
+	TaskPlannerMaxSteps int
 }
 
 // New constructs an Agent. MaxSteps <= 0 means no cap — the run loop continues
@@ -975,6 +1005,24 @@ func New(prov provider.Provider, tools *tool.Registry, session *Session, opts Op
 		memoryCompiler:           opts.MemoryCompiler,
 		memoryCompilerVerbosity:  normalizeMemoryCompilerVerbosity(opts.MemoryCompilerVerbosity),
 	}
+	// Initialize Adviser (execution monitor) when configured
+	if opts.AdviserSameToolLimit > 0 {
+		a.adviser = NewAdviserWithLimits(opts.AdviserSameToolLimit, opts.AdviserTotalLimit)
+		if opts.AdviserTotalLimit <= 0 {
+			a.adviser.TotalLimit = 25
+		}
+	}
+
+	// Initialize Reflector (failure recovery) when configured
+	if opts.ReflectorMaxFailures > 0 {
+		a.reflector = NewReflectorWithLimits(opts.ReflectorMaxFailures, opts.ReflectorCooldownSecs)
+	}
+
+	// Initialize TaskPlanner when enabled
+	if opts.TaskPlannerEnabled {
+		a.taskPlanner = NewTaskPlannerWithConfig(true, opts.TaskPlannerMaxSteps)
+	}
+
 	// 初始化分类器
 	if opts.UseMemoryCompilerLLMClassification && prov != nil {
 		// 使用 LLM 分类器（Haiku）
@@ -1015,6 +1063,15 @@ func (a *Agent) Run(ctx context.Context, input string) (runErr error) {
 	a.blockedTurnStreak = 0
 	a.loopGuardArmed = false
 	a.loopGuardReceiptMark = 0
+
+	// Reset adviser and reflector for a new turn
+	if a.adviser != nil {
+		a.adviser.Reset()
+	}
+	if a.reflector != nil {
+		a.reflector.Reset()
+	}
+
 	a.sink.Emit(event.Event{Kind: event.TurnStarted})
 	rawInput := input
 	memoryCompilerInput := rawInput
@@ -1068,6 +1125,14 @@ func (a *Agent) Run(ctx context.Context, input string) (runErr error) {
 		}
 	}
 	a.session.Add(provider.Message{Role: provider.RoleUser, Content: input, Images: userImages(ctx)})
+
+	// TaskPlanner: generate a structured plan before execution
+	if a.taskPlanner != nil && a.taskPlanner.IsEnabled() {
+		plan := a.taskPlanner.GeneratePlan(ctx, input)
+		if plan != nil && len(plan.Steps) > 0 {
+			a.sink.Emit(event.Event{Kind: event.TaskPlan, TaskPlan: *plan})
+		}
+	}
 
 	finalReadinessBlocks := 0
 	emptyFinalBlocks := 0
@@ -1166,6 +1231,18 @@ func (a *Agent) Run(ctx context.Context, input string) (runErr error) {
 				}
 				a.sink.Emit(event.Event{Kind: event.Notice, Level: event.LevelWarn, Text: emptyFinalNotice(a.prov.Name(), usage, len(reasoning))})
 				a.session.Add(provider.Message{Role: provider.RoleUser, Content: a.withTurnPreferences(emptyFinalRetryMessage())})
+
+				// Reflector: analyze empty turn and provide guidance
+				if a.reflector != nil {
+					rr := a.reflector.RecordEmptyTurn(ctx)
+					if rr != nil {
+						a.sink.Emit(event.Event{Kind: event.ReflectorAssessment, Reflector: *rr})
+						if rr.Guidance != "" {
+							a.Steer(rr.Guidance)
+						}
+					}
+				}
+
 				a.maybeCompact(ctx, usage)
 				continue
 			}
@@ -1206,6 +1283,42 @@ func (a *Agent) Run(ctx context.Context, input string) (runErr error) {
 				Name:       call.Name,
 			})
 		}
+
+		// Adviser: monitor tool-call patterns (loop detection, error repetition)
+		if a.adviser != nil {
+			for i, call := range calls {
+				errStr := ""
+				if !isToolResultOk(results[i]) {
+					errStr = results[i]
+				}
+				ar := a.adviser.RecordToolCall(ctx, call.Name, results[i], errStr)
+				if ar != nil && ar.Guidance != "" {
+					a.sink.Emit(event.Event{Kind: event.AdviserAssessment, Adviser: *ar})
+					// Inject guidance as a steer message when loop detected
+					if ar.IsLoop {
+						a.Steer(ar.Guidance)
+					}
+				}
+			}
+		}
+
+		// Reflector: intervene when repeated failures are detected
+		if a.reflector != nil {
+			for i, call := range calls {
+				errStr := ""
+				if !isToolResultOk(results[i]) {
+					errStr = results[i]
+				}
+				rr := a.reflector.RecordToolResult(ctx, call.Name, errStr, results[i])
+				if rr != nil {
+					a.sink.Emit(event.Event{Kind: event.ReflectorAssessment, Reflector: *rr})
+					if rr.Guidance != "" {
+						a.Steer(rr.Guidance)
+					}
+				}
+			}
+		}
+
 		// If the context was cancelled during tool execution, return after storing
 		// the batch results so the session keeps paired tool-call history.
 		if ctx.Err() != nil {
@@ -1557,6 +1670,11 @@ func toolResultFailed(content string) bool {
 		strings.HasPrefix(content, "blocked:") ||
 		strings.HasPrefix(content, "Error:") ||
 		strings.HasPrefix(content, "[error")
+}
+
+// isToolResultOk returns true when a tool result appears successful.
+func isToolResultOk(content string) bool {
+	return !toolResultFailed(content) && strings.TrimSpace(content) != ""
 }
 
 func finalReadinessCheckSource(check instruction.VerifyCheck) string {

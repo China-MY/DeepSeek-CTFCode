@@ -6,8 +6,19 @@ branch.
 
 ## Unreleased
 
+### Added
+
+- **执行监督系统 (Adviser)**：参考 PentAGI Execution Monitoring，实时监控 Agent 工具调用模式。自动检测循环（相同工具连续调用N次）、错误重复、总调用阈值，通过 Steer 机制注入纠正指导。
+- **反射器 (Reflector)**：参考 PentAGI Reflector Integration，当 Agent 遇到重复失败时自动介入。支持 tool_error/empty_turn/plan_stuck/loop 四种失败模式分类，匹配 timeout/permission/connection 等错误模式生成根因分析和纠正建议。
+- **智能任务规划 (TaskPlanner)**：参考 PentAGI Intelligent Task Planning，在复杂任务执行前自动生成结构化计划。支持 Recon/Exploit/Web/Crypto/Reverse/Forensic 六类 CTF 场景的领域特定任务分解，含风险评估和工具建议。
+- **事件系统扩展**：新增 `AdviserAssessment`、`ReflectorAssessment`、`TaskPlan` 三种事件类型和完整的 payload 结构体，TUI 支持可视化展示。
+- **配置系统**：`AgentConfig` 新增 `ExecutionMonitorConfig`、`ReflectorConfig`、`TaskPlannerConfig` 三组 TOML 配置项。
+
 ### Changed
 
+- Agent 主循环集成 Adviser/Reflector/TaskPlanner 三组件，支持可配置启用。
+- Boot 装配流程新增 8 个配置读取助手函数。
+- ctfcode.toml 默认启用上述监控功能。
 - Agent runtime defaults now leave both executor and dedicated planner tool-call
   rounds unlimited (`max_steps = 0`, `planner_max_steps = 0`). Step limits now
   come from the user/global config only; project `reasonix.toml` does not

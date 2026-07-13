@@ -3619,6 +3619,48 @@ func (m *chatTUI) ingestEvent(e event.Event) {
 			m.commitLine("  · " + line)
 		}
 
+	case event.AdviserAssessment:
+		m.finalizeStreamed()
+		a := e.Adviser
+		if a.IsLoop {
+			line := fmt.Sprintf("Adviser ⚠ loop detected: %s used %d× consecutively", a.SameToolName, a.SameToolCount)
+			m.commitLine(dim("  ⚠ " + line))
+		}
+		if a.StuckOnError && !a.IsLoop {
+			snippet := a.LastErrorFragment
+			if len(snippet) > 60 {
+				snippet = snippet[:60] + "..."
+			}
+			line := fmt.Sprintf("Adviser ⚠ error repetition: %s", snippet)
+			m.commitLine(dim("  ⚠ " + line))
+		}
+		if a.TotalToolCalls >= 20 && !a.IsLoop && !a.StuckOnError {
+			m.commitLine(dim(fmt.Sprintf("  · Adviser: %d tool calls this turn", a.TotalToolCalls)))
+		}
+
+	case event.ReflectorAssessment:
+		m.finalizeStreamed()
+		r := e.Reflector
+		if r.Guidance != "" {
+			rc := r.RootCause
+			if len(rc) > 80 {
+				rc = rc[:80] + "..."
+			}
+			m.commitLine(dim(fmt.Sprintf("  🔄 Reflector: %s (root cause: %s)", r.FailurePattern, rc)))
+		}
+
+	case event.TaskPlan:
+		m.finalizeStreamed()
+		tp := e.TaskPlan
+		m.commitLine("📋 Task Plan")
+		m.commitLine(dim("  " + tp.Strategy))
+		if tp.RiskAssessment != "" {
+			m.commitLine(dim("  Risk: " + tp.RiskAssessment))
+		}
+		for _, step := range tp.Steps {
+			m.commitLine(fmt.Sprintf("   %d. %s", step.ID, step.Description))
+		}
+
 	case event.CompactionStarted:
 		m.finalizeStreamed()
 		m.commitLine(dim("  ⋯ " + i18n.M.CompactionWorking))

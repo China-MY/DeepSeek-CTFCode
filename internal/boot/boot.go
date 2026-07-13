@@ -73,6 +73,80 @@ func agentKeepPolicy(keep []string) agent.KeepPolicy {
 	return p
 }
 
+// adviserSameToolLimit returns the configured same-tool limit, or 3 if
+// execution monitoring is disabled or at defaults.
+func adviserSameToolLimit(cfg *config.Config) int {
+	if cfg == nil || cfg.Agent.ExecutionMonitor.SameToolLimit <= 0 {
+		return 0 // disabled
+	}
+	if !isExecutionMonitorEnabled(cfg) {
+		return 0
+	}
+	return cfg.Agent.ExecutionMonitor.SameToolLimit
+}
+
+func adviserTotalLimit(cfg *config.Config) int {
+	if cfg == nil || cfg.Agent.ExecutionMonitor.TotalToolLimit <= 0 {
+		return 0
+	}
+	if !isExecutionMonitorEnabled(cfg) {
+		return 0
+	}
+	return cfg.Agent.ExecutionMonitor.TotalToolLimit
+}
+
+func reflectorMaxFailures(cfg *config.Config) int {
+	if cfg == nil || cfg.Agent.Reflector.MaxFailures <= 0 {
+		return 0
+	}
+	if !isReflectorEnabled(cfg) {
+		return 0
+	}
+	return cfg.Agent.Reflector.MaxFailures
+}
+
+func reflectorCooldownSecs(cfg *config.Config) int {
+	if cfg == nil || cfg.Agent.Reflector.CooldownSeconds <= 0 {
+		return 30
+	}
+	return cfg.Agent.Reflector.CooldownSeconds
+}
+
+func taskPlannerEnabled(cfg *config.Config) bool {
+	if cfg == nil {
+		return false
+	}
+	return isTaskPlannerEnabled(cfg)
+}
+
+func taskPlannerMaxSteps(cfg *config.Config) int {
+	if cfg == nil || cfg.Agent.TaskPlanner.MaxSteps <= 0 {
+		return 7
+	}
+	return cfg.Agent.TaskPlanner.MaxSteps
+}
+
+func isExecutionMonitorEnabled(cfg *config.Config) bool {
+	if cfg == nil || cfg.Agent.ExecutionMonitor.Enabled == nil {
+		return false
+	}
+	return *cfg.Agent.ExecutionMonitor.Enabled
+}
+
+func isReflectorEnabled(cfg *config.Config) bool {
+	if cfg == nil || cfg.Agent.Reflector.Enabled == nil {
+		return false
+	}
+	return *cfg.Agent.Reflector.Enabled
+}
+
+func isTaskPlannerEnabled(cfg *config.Config) bool {
+	if cfg == nil || cfg.Agent.TaskPlanner.Enabled == nil {
+		return false
+	}
+	return *cfg.Agent.TaskPlanner.Enabled
+}
+
 // Options carries the per-run knobs a frontend chooses; everything else is read
 // from configuration. Model "" falls back to the configured default_model;
 // MaxSteps 0 uses the config/default. RequireKey forces the executor's API key to
@@ -1042,6 +1116,18 @@ func Build(ctx context.Context, opts Options) (*control.Controller, error) {
 		MemoryCompiler:                     memCompiler,
 		MemoryCompilerVerbosity:            cfg.MemoryCompilerVerbosity(),
 		UseMemoryCompilerLLMClassification: strings.TrimSpace(os.Getenv("REASONIX_MEMORY_COMPILER_LLM_CLASSIFICATION")) == "true",
+
+		// Adviser (execution monitoring) configuration
+		AdviserSameToolLimit:  adviserSameToolLimit(cfg),
+		AdviserTotalLimit:    adviserTotalLimit(cfg),
+
+		// Reflector (failure recovery) configuration
+		ReflectorMaxFailures:    reflectorMaxFailures(cfg),
+		ReflectorCooldownSecs:  reflectorCooldownSecs(cfg),
+
+		// TaskPlanner (intelligent task decomposition) configuration
+		TaskPlannerEnabled:  taskPlannerEnabled(cfg),
+		TaskPlannerMaxSteps: taskPlannerMaxSteps(cfg),
 	}, sink)
 
 	// Multi-agent orchestration: register handoff tools and optionally wrap

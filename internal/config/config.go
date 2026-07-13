@@ -1010,12 +1010,59 @@ type AgentConfig struct {
 	// default to enabled so users get the self-improving planner unless they opt
 	// out explicitly.
 	MemoryCompiler MemoryCompilerConfig `toml:"memory_compiler"`
+
+	// ExecutionMonitor controls the adviser (execution monitoring) system.
+	// Inspired by PentAGI's Execution Monitoring.
+	ExecutionMonitor ExecutionMonitorConfig `toml:"execution_monitor"`
+
+	// Reflector controls the failure analysis and recovery system.
+	// Inspired by PentAGI's Reflector integration.
+	Reflector ReflectorConfig `toml:"reflector"`
+
+	// TaskPlanner controls the intelligent task decomposition system.
+	// Inspired by PentAGI's Intelligent Task Planning.
+	TaskPlanner TaskPlannerConfig `toml:"task_planner"`
 }
 
 // MemoryCompilerConfig controls the v5 execution-memory compiler.
 type MemoryCompilerConfig struct {
 	Enabled   *bool  `toml:"enabled"`
 	Verbosity string `toml:"verbosity"`
+}
+
+// ExecutionMonitorConfig controls the adviser execution monitoring system.
+// Inspired by PentAGI's Execution Monitoring.
+type ExecutionMonitorConfig struct {
+	// Enabled activates execution monitoring. Default: false.
+	Enabled *bool `toml:"enabled"`
+	// SameToolLimit sets how many consecutive same-tool calls trigger a loop
+	// warning. Default: 3.
+	SameToolLimit int `toml:"same_tool_limit"`
+	// TotalToolLimit sets the total tool-call threshold for a general warning.
+	// Default: 25.
+	TotalToolLimit int `toml:"total_tool_limit"`
+}
+
+// ReflectorConfig controls the failure analysis and recovery system.
+// Inspired by PentAGI's Reflector integration.
+type ReflectorConfig struct {
+	// Enabled activates the reflector. Default: false.
+	Enabled *bool `toml:"enabled"`
+	// MaxFailures sets how many consecutive failures trigger intervention.
+	// Default: 3.
+	MaxFailures int `toml:"max_failures"`
+	// CooldownSeconds sets the minimum seconds between interventions.
+	// Default: 30.
+	CooldownSeconds int `toml:"cooldown_seconds"`
+}
+
+// TaskPlannerConfig controls the intelligent task decomposition system.
+// Inspired by PentAGI's Intelligent Task Planning.
+type TaskPlannerConfig struct {
+	// Enabled activates task planning. Default: false.
+	Enabled *bool `toml:"enabled"`
+	// MaxSteps caps the number of steps in a generated plan. Default: 7.
+	MaxSteps int `toml:"max_steps"`
 }
 
 // AgentEntry is one role definition in the [[agents]] TOML array. When at least
