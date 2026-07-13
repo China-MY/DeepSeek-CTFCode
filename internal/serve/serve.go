@@ -80,6 +80,7 @@ func New(ctrl control.SessionAPI, bc *Broadcaster, serveCfg config.ServeConfig) 
 		pentestH:   pentest.NewHandler(pts),
 	}
 	s.initTitleProvider()
+	s.initPentestInterceptor()
 	return s
 }
 
@@ -160,6 +161,95 @@ func (s *Server) initTitleProvider() {
 	}
 	s.titleProv = prov
 	s.titlePrice = entry.Price
+}
+
+// initPentestInterceptor wires the Broadcaster's interceptor to forward
+// relevant agent events to the pentest service.
+func (s *Server) initPentestInterceptor() {
+	s.bc.Interceptor = func(e event.Event) {
+		switch e.Kind {
+		case event.TaskPlan:
+			nodes := planToTaskNodes(e.TaskPlan)
+			if len(nodes) > 0 {
+				s.pentestSvc.SetTaskTree(nodes)
+			}
+		case event.ToolResult:
+			if e.Tool.Name != "" && e.Tool.Output != "" && e.Tool.Err == "" {
+				vuln := toolResultToVulnCard(e.Tool)
+				if vuln != nil {
+					s.pentestSvc.AddVulnerability(vuln)
+				}
+			}
+		case event.Phase:
+			stats := s.pentestSvc.GetStats()
+			stats.CurrentPhase = e.Text
+			s.pentestSvc.UpdateStats(stats)
+		case event.TurnDone:
+			stats := s.pentestSvc.GetStats()
+			stats.TasksCompleted++
+			stats.TasksTotal++
+			s.pentestSvc.UpdateStats(stats)
+		}
+	}
+}
+
+// planToTaskNodes converts a TaskPlanResult to pentest task tree nodes.
+func planToTaskNodes(plan event.TaskPlanResult) []*pentest.TaskNode {
+	if len(plan.Steps) == 0 {
+		return nil
+	}
+	var roots []*pentest.TaskNode
+	for i, step := range plan.Steps {
+		node := &pentest.TaskNode{
+			ID:          fmt.Sprintf("task-%d", i),
+			Title:       step.Description,
+			Description: step.Description,
+			Status:      pentest.TaskPending,
+			Order:       i,
+			Depth:       0,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+		roots = append(roots, node)
+	}
+	return roots
+}
+
+// toolResultToVulnCard converts a successful tool result into a vulnerability card.
+func toolResultToVulnCard(tool event.Tool) *pentest.VulnerabilityCard {
+	if tool.Name == "" || tool.Output == "" {
+		return nil
+	}
+	isExploit := false
+	indicators := []string{"flag{", "FLAG{", "CTF{", "ctf{",
+		"root:", "root$", "# ", "Administrator",
+		"success", "Success", "exploit", "Exploit",
+		"vulnerability", "Vulnerability", "CVE-",
+		"SQL", "sql", "注入", "RCE", "rce",
+		"shell", "Shell", "webshell", "WebShell"}
+	for _, ind := range indicators {
+		if strings.Contains(tool.Output, ind) || strings.Contains(tool.Name, ind) {
+			isExploit = true
+			break
+		}
+	}
+	if !isExploit {
+		return nil
+	}
+	now := time.Now()
+	return &pentest.VulnerabilityCard{
+		ID:          fmt.Sprintf("vuln-%d", now.UnixMilli()),
+		Title:       "Potential " + tool.Name + " vulnerability",
+		Description: "Automatically detected from tool execution",
+		Severity:    pentest.SeverityHigh,
+		Category:    pentest.CategoryOther,
+		IsVerified:  true,
+		ShellOutput: tool.Output,
+		CreatedAt:   now,
+		AttackSteps: []pentest.AttackStep{
+			{Order: 1, Description: "Tool: " + tool.Name, Output: tool.Output},
+		},
+	}
 }
 
 // switchModel rebuilds the controller with a new model, carrying over the

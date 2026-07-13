@@ -13,9 +13,16 @@ import (
 // A slow subscriber's buffer is allowed to drop rather than back-pressure the
 // agent goroutine — a browser that can't keep up loses intermediate frames, not
 // the whole session (it can refetch /history).
+//
+// An optional Interceptor can be set to tap into the event stream (e.g. for
+// pentest state tracking) before events reach SSE clients.
 type Broadcaster struct {
 	mu   sync.Mutex
 	subs map[chan []byte]struct{}
+
+	// Interceptor, when set, is called synchronously for every event before
+	// fan-out. It must not block for long — slow interceptors stall the agent.
+	Interceptor func(event.Event)
 }
 
 // NewBroadcaster returns an empty Broadcaster ready to accept subscribers.
@@ -26,7 +33,11 @@ func NewBroadcaster() *Broadcaster {
 // Emit marshals the event to JSON and delivers it to every subscriber. Drops to
 // a subscriber whose buffer is full rather than blocking. A marshal failure is
 // dropped silently — one bad event shouldn't stall the stream.
+// If an Interceptor is set, it is called before fan-out.
 func (b *Broadcaster) Emit(e event.Event) {
+	if b.Interceptor != nil {
+		b.Interceptor(e)
+	}
 	data, err := json.Marshal(eventwire.ToWire(e))
 	if err != nil {
 		return

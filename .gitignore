@@ -11,6 +11,9 @@
 /site/.astro/
 /site/_preview.png
 
+# AutoResearch state
+.reasonix/
+
 # Go test/build scratch
 *.test
 *.out

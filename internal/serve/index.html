@@ -1213,9 +1213,9 @@ function connectSSE(){
           if(ev.delta?.reasoning)appendReasoning(ev.delta.reasoning);
           if(ev.delta?.content)appendText(ev.delta.content);
           break;
-        case 'message_stop':setRunning(false);finalizeMsg();fetchStatus();fetchPentestStats();break;
+        case 'message_stop':setRunning(false);finalizeMsg();fetchStatus();fetchPentestStats();fetchTodos();break;
         case 'tool_use':renderToolDispatch(ev.tool);break;
-        case 'tool_result':renderToolResult(ev.tool);break;
+        case 'tool_result':renderToolResult(ev.tool);fetchPentestStats();break;
         case 'tool_progress':renderToolProgress({id:ev.id,output:ev.output});break;
         case 'approval_request':renderApproval(ev);break;
         case 'ask':renderAsk(ev);break;
@@ -1422,12 +1422,22 @@ function updateDashboard(s){
 function updateDashboardFromPentest(stats){
   if(!stats)return;
   $('#dash-targets').textContent=stats.total_targets||0;
-  $('#dash-vulns').textContent=stats.vulnerabilities_found||0;
+  const vulnCount=stats.vulnerabilities_found||0;
+  $('#dash-vulns').textContent=vulnCount;
   const done=stats.tasks_completed||0,total=stats.tasks_total||0;
   $('#dash-tasks').innerHTML=done+'<small style="font-size:14px">/'+total+'</small>';
   $('#dash-paths').textContent=stats.attack_paths_discovered||0;
   $('#sev-critical').textContent=stats.critical_vulns||0;
   $('#sev-high').textContent=stats.high_vulns||0;
+  $('#sev-medium').textContent=(stats.vulnerabilities_found||0)-((stats.critical_vulns||0)+(stats.high_vulns||0));
+  // Update agent info
+  if(stats.active_agent_name)$('#dash-agent').textContent=stats.active_agent_name;
+  if(stats.current_phase)$('#dash-phase').textContent='当前阶段：'+stats.current_phase;
+  // Update badge on sidebar
+  const badge=$('#vuln-badge'),tabBadge=$('#vuln-tab-badge');
+  if(vulnCount>0){badge.textContent=vulnCount;badge.style.display='inline';tabBadge.textContent=vulnCount;tabBadge.style.display='inline';}
+  else{badge.style.display='none';tabBadge.style.display='none';}
+}
 }
 function updateVulnBadge(stats){
   const count=stats?.vulnerabilities_found||0;

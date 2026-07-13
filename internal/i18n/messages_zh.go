@@ -418,13 +418,13 @@ var Chinese = Messages{
 	UpgradeApplyFailed:         "应用更新失败：%v",
 	UpgradeSuccessFmt:          "已更新 %s → %s",
 
-	UsageBody: `ctfcode — 由配置和插件驱动的 coding agent（多模型）
+	UsageBody: `AI渗透系统 — Pentest Jarvis | 基于AI大模型的自动化渗透测试平台
 
 用法：
   ctfcode [--model NAME] [-c|--continue] [--resume] [--copy] [--yolo] [--dir PATH]   交互式会话（多轮；-c 恢复最近一次，--resume 选择一个，--copy 在副本中继续）
   ctfcode run  [--model NAME] [--max-steps N] [-c|--continue] [--resume PATH] [--copy] <task>   执行单次任务后退出
   ctfcode review [--base BRANCH] [--commit SHA] [--model NAME]  AI 代码审查（基于本地 diff）
-  ctfcode serve [--model NAME] [--addr HOST:PORT] [--auth none|token|password] [--token STR] [--password STR] [--hash-password]  通过 HTTP+SSE 提供服务（支持可选认证）
+  ctfcode serve|server [--model NAME] [--addr HOST:PORT] [--auth none|token|password] [--token STR] [--password STR] [--hash-password]  通过 HTTP+SSE 启动 Web 渗透工作台（支持可选认证）
   ctfcode acp [--model NAME]                           通过 stdio 提供 Agent Client Protocol（也可用：ctfcode --acp）
   ctfcode setup [path]                                 交互式配置向导；生成 reasonix.toml（及 .env）
   ctfcode config auto-plan [off|on]                    配置自动计划模式
@@ -442,9 +442,9 @@ var Chinese = Messages{
 示例：
   ctfcode
   ctfcode --continue
-  ctfcode run "把 main.go 里的 TODO 实现掉"
-  ctfcode run --model mimo-pro "给这个函数补单元测试"
-  echo "解释这段代码" | reasonix run
+  ctfcode serve                             启动 Web 渗透工作台
+  ctfcode run "对目标 192.168.1.1 进行渗透测试"
+  ctfcode run --model deepseek-pro "扫描目标网段 10.0.0.0/24"
 
 配置：
   优先级：flag > ./reasonix.toml > ~/.reasonix/config.toml > 内置默认值

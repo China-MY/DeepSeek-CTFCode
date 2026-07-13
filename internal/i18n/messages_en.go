@@ -417,13 +417,13 @@ var English = Messages{
 	UpgradeApplyFailed:         "failed to apply update: %v",
 	UpgradeSuccessFmt:          "Updated %s → %s",
 
-	UsageBody: `ctfcode — A config- and plugin-driven coding agent (multi-model)
+	UsageBody: `AI渗透系统 — Pentest Jarvis | AI-powered automated penetration testing platform
 
 Usage:
   ctfcode [--model NAME] [-c|--continue] [--resume] [--copy] [--yolo] [--dir PATH]   interactive session (multi-turn; -c resumes the latest, --resume picks one, --copy continues in a duplicate)
   ctfcode run  [--model NAME] [--max-steps N] [-c|--continue] [--resume PATH] [--copy] <task>   run one task and exit
   ctfcode review [--base BRANCH] [--commit SHA] [--model NAME]  AI-powered code review on local diffs
-  ctfcode serve [--model NAME] [--addr HOST:PORT] [--auth none|token|password] [--token STR] [--password STR] [--hash-password]  serve over HTTP+SSE (with optional auth)
+  ctfcode serve|server [--model NAME] [--addr HOST:PORT] [--auth none|token|password] [--token STR] [--password STR] [--hash-password]  start Web pentest workbench over HTTP+SSE (with optional auth)
   ctfcode acp [--model NAME]                           serve Agent Client Protocol over stdio (also: ctfcode --acp)
   ctfcode setup [path]                                 interactive config wizard; writes reasonix.toml (+ .env)
   ctfcode config auto-plan [off|on]                    configure automatic plan mode
@@ -441,9 +441,9 @@ Usage:
 Examples:
   ctfcode
   ctfcode --continue
-  ctfcode run "implement the TODOs in main.go"
-  ctfcode run --model mimo-pro "add unit tests for this function"
-  echo "explain this code" | reasonix run
+  ctfcode serve                             start Web pentest workbench
+  ctfcode run "penetration test target 192.168.1.1"
+  ctfcode run --model deepseek-pro "scan network 10.0.0.0/24"
 
 Configuration:
   Resolution: flag > ./reasonix.toml > ~/.reasonix/config.toml > built-in defaults

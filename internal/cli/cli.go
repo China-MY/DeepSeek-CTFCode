@@ -93,7 +93,7 @@ func Run(args []string, version string) int {
 		return runAgent(rest)
 	case "chat", "code": // "code" is the v0.x name for the interactive session
 		return runInteractiveSession(rest)
-	case "serve":
+	case "serve", "server":
 		return runServe(rest)
 	case "setup":
 		configureCLIThemeFromConfigForTTYOutput()
@@ -154,7 +154,7 @@ func isDefaultInteractiveFlag(arg string) bool {
 
 func shouldMigrateLegacyConfigForCLI(cmd string) bool {
 	switch cmd {
-	case "", "run", "chat", "code", "serve", "setup", "config", "init", "acp", "mcp", "plugin", "doctor", "bot", "upgrade", "update":
+	case "", "run", "chat", "code", "serve", "server", "setup", "config", "init", "acp", "mcp", "plugin", "doctor", "bot", "upgrade", "update":
 		return true
 	default:
 		return false
