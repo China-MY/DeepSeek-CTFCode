@@ -1,0 +1,264 @@
+# ctfcode — AI渗透系统（Pentest Jarvis）
+# 基于AI大模型的自动化渗透测试平台
+# 配置加载顺序：./reasonix.toml > ~/.ctfcode/config.toml > 内置默认值
+
+# =============================================================================
+# AI渗透系统 — Pentest Jarvis
+# 核心配置
+# =============================================================================
+
+default_model = "deepseek-flash"
+language = "zh"
+
+[ui]
+theme = "dark"
+theme_style = "aurora"
+show_reasoning = true
+cursor_shape = "underline"
+
+[agent]
+system_prompt = """
+你是 Pentest Jarvis — AI渗透系统的核心智能体。
+
+你是一个具备自主渗透测试能力的AI安全专家，能够：
+1. 自主侦察：发现目标资产、端口、服务、技术栈
+2. 漏洞挖掘：匹配CVE、验证漏洞、编写PoC
+3. 漏洞利用：获取Shell、提取数据、权限提升
+4. 证据归档：生成漏洞卡片和渗透报告
+5. 经验固化：将攻击链转化为可复用的AI Skill
+
+核心原则：
+1. 按阶段推进：侦察 → 漏洞利用 → 后渗透 → 报告
+2. Python Exploit 才能证明漏洞可利用
+3. 证据落地到 /root/ATKING/ 目录
+4. 交叉验证每个发现
+5. 多目标并行推进
+6. 漏洞发现后自动生成漏洞卡片
+
+可用 slash 命令：
+/init - 生成 AGENTS.md（项目记忆）
+/clear - 清除当前会话
+/vuln - 手动添加漏洞卡片
+/report - 生成渗透报告
+/mcp - 管理 MCP 插件连接
+
+[execution_monitor]
+# PentAGI 风格的 Agent 执行监督系统
+enabled = true
+same_tool_limit = 3    # 相同工具连续调用N次触发循环警告
+total_tool_limit = 25  # 总工具调用数阈值
+
+[reflector]
+# PentAGI 风格的反射器 - 失败恢复
+enabled = true
+max_failures = 3       # 连续失败N次后反射器介入分析
+cooldown_seconds = 30  # 反射器介入冷却时间
+
+[task_planner]
+# PentAGI 风格的智能任务规划
+enabled = true
+max_steps = 7          # 计划最大步骤数
+
+当前阶段通过环境变量 PENTEST_PHASE 追踪：
+  - recon:   侦察阶段
+  - exploit: 漏洞利用阶段
+  - post:    后渗透阶段
+  - report:  报告输出阶段
+执行 bash 时同步更新：export PENTEST_PHASE=recon
+"""
+temperature = 0.0
+auto_plan = "on"
+reasoning_language = "zh"
+output_style = "ctf-pentest"
+
+soft_compact_ratio = 0.5
+tool_result_snip_ratio = 0.6
+compact_ratio = 0.8
+compact_force_ratio = 0.9
+
+# =============================================================================
+# Custom statusline — 渗透流程 + 费用实时显示
+# =============================================================================
+[statusline]
+command = "bash .ctfcode/statusline.sh"
+
+# =============================================================================
+# Provider — DeepSeek API（含定价）
+# =============================================================================
+[[providers]]
+name = "deepseek-flash"
+kind = "openai"
+base_url = "https://api.deepseek.com"
+model = "deepseek-v4-flash"
+api_key_env = "DEEPSEEK_API_KEY"
+context_window = 1000000
+effort = "high"
+balance_url = "https://api.deepseek.com/user/balance"
+prices = { cache_hit = 0.02, input = 1, output = 2, currency = "¥" }
+
+[[providers]]
+name = "deepseek-pro"
+kind = "openai"
+base_url = "https://api.deepseek.com"
+model = "deepseek-v4-pro"
+api_key_env = "DEEPSEEK_API_KEY"
+context_window = 1000000
+effort = "high"
+balance_url = "https://api.deepseek.com/user/balance"
+prices = { cache_hit = 0.025, input = 3, output = 6, currency = "¥" }
+
+# =============================================================================
+# Multi-Agent — AI渗透系统 双Agent协同架构
+# =============================================================================
+# 任务拆解Agent(Planner) → 动态执行Agent(Recon/Exploit) → 报告固化Agent(Report)
+# 符合 AI渗透系统 全流程：侦察→漏洞利用→后渗透→报告
+
+[[agents]]
+id = "planner"
+name = "任务拆解Agent"
+role = "AI渗透系统 — 任务拆解、Agent调度、全局态势控制"
+system_prompt_file = ".ctfcode/prompts/planner.md"
+provider = "deepseek-pro"
+model = "deepseek-v4-pro"
+allowed_tools = [
+    "handoff_to_agent", "task_complete",
+    "read_file", "grep", "glob", "ls", "web_fetch",
+    "read_skill", "read_only_skill", "memory",
+]
+allowed_handoffs = ["recon", "exploit", "report"]
+mounted_knowledge = ["recon-guide", "exploit-playbook", "report-template"]
+enable_learning = true
+thinking_level = "high"
+
+[[agents]]
+id = "recon"
+name = "动态执行Agent(侦察)"
+role = "AI渗透系统 — 资产发现、端口扫描、指纹识别、漏洞匹配"
+system_prompt_file = ".ctfcode/prompts/recon.md"
+provider = "deepseek-flash"
+model = "deepseek-v4-flash"
+allowed_tools = [
+    "handoff_to_agent", "task_complete",
+    "bash", "read_file", "write_file", "grep", "glob", "ls", "web_fetch",
+]
+allowed_handoffs = ["planner"]
+mounted_knowledge = ["recon-guide"]
+enable_learning = true
+thinking_level = "medium"
+
+[[agents]]
+id = "exploit"
+name = "动态执行Agent(利用)"
+role = "AI渗透系统 — Exploit开发、漏洞利用、Shell获取、数据提取"
+system_prompt_file = ".ctfcode/prompts/exploit.md"
+provider = "deepseek-flash"
+model = "deepseek-v4-flash"
+allowed_tools = [
+    "handoff_to_agent", "task_complete",
+    "bash", "read_file", "write_file", "edit_file", "grep", "glob", "ls", "web_fetch",
+]
+allowed_handoffs = ["planner", "report"]
+mounted_knowledge = ["exploit-playbook"]
+enable_learning = true
+thinking_level = "high"
+
+[[agents]]
+id = "report"
+name = "报告固化Agent"
+role = "AI渗透系统 — 证据整理、漏洞卡片、报告输出、Skill固化"
+system_prompt_file = ".ctfcode/prompts/report.md"
+provider = "deepseek-pro"
+model = "deepseek-v4-pro"
+allowed_tools = [
+    "handoff_to_agent", "task_complete",
+    "read_file", "write_file", "grep", "glob", "ls",
+]
+allowed_handoffs = ["planner"]
+mounted_knowledge = ["report-template"]
+enable_learning = true
+thinking_level = "low"
+
+# =============================================================================
+# MCP 插件 — CTF 工具链
+# =============================================================================
+# fofamap-v2 — FOFA 资产测绘
+[[plugins]]
+name = "fofamap"
+type = "stdio"
+command = "fofamap-v2"
+args = []
+env = {}
+# 配置电子邮件和 API Key 在 ~/.ctfcode/.env 中：
+# FOFAMAP_EMAIL=your_email
+# FOFAMAP_KEY=your_key
+
+# TscanPlus — 综合扫描器
+# [[plugins]]
+# name = "tscanplus"
+# type = "stdio"
+# command = "TscanPlus"
+# args = []
+# env = {}
+
+# hexstrike-ai — AI 渗透测试工具
+# [[plugins]]
+# name = "hexstrike"
+# type = "stdio"
+# command = "hexstrike-ai"
+# args = []
+# env = {}
+
+# Yakit — Yak语言安全工具
+# [[plugins]]
+# name = "yakit"
+# type = "stdio"
+# command = "yakit"
+# args = ["mcp"]
+# env = {}
+
+# ez — 绿盟综合扫描器
+# [[plugins]]
+# name = "ez"
+# type = "stdio"
+# command = "ez"
+# args = ["mcp"]
+# env = {}
+
+# =============================================================================
+# Skills — 技能系统
+# =============================================================================
+[skills]
+# paths = ["~/.ctfcode/skills"]   # 自定义 skill 路径
+# 排除第三方 skill 目录中的噪音 README 文件，避免启动时大量警告
+excluded_paths = [
+    "~/.ctfcode/skills/01-code-audit",
+    "~/.ctfcode/skills/02-threat-model",
+    "~/.ctfcode/skills/03-ctf-web",
+    "~/.ctfcode/skills/04-ctf-crypto",
+    "~/.ctfcode/skills/05-rust",
+    "~/.ctfcode/skills/06-write-skills",
+    "~/.ctfcode/skills/07-php-audit",
+    "~/.ctfcode/skills/08-java-audit",
+    "~/.ctfcode/skills/09-red-blue",
+    "~/.ctfcode/skills/10-reverse-engineering",
+    "~/.ctfcode/skills/11-report",
+    "~/.ctfcode/skills/12-domain-pentest",
+    "~/.ctfcode/skills/13-wechat-miniapp",
+    "~/.ctfcode/skills/14-mcp",
+    "~/.ctfcode/skills/15-security-research",
+    "~/.ctfcode/skills/16-fun",
+]
+
+# =============================================================================
+# Permissions — 权限控制
+# =============================================================================
+[permissions]
+mode = "accept"   # accept|reject|ask — 默认接受所有工具调用
+# 以下白名单继承自 reasonix.toml（已合并）
+allow = ["Bash(echo \"=== Nmap 端口扫描 (Top 1000) ===\" && nmap -sS -sV -T4 --top-ports 1000 -Pn 112.24.99.137 -oN /tmp/nmap_scan.txt 2>&1 | tail -30)", "explore"]
+
+# =============================================================================
+# Tools — 工具配置
+# =============================================================================
+[tools.shell]
+prefer = "bash"

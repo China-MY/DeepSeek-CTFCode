@@ -8,8 +8,8 @@ read -r INPUT
 # 默认值
 MODEL="..."
 BALANCE=""
-PHASE="${REASONIX_CTF_PHASE:-idle}"
-SUBSTEP="${REASONIX_CTF_SUBSTEP:-}"
+PHASE="${PENTEST_PHASE:-idle}"
+SUBSTEP="${PENTEST_SUBSTEP:-""
 
 # 尝试解析 JSON
 if command -v jq &>/dev/null && [ -n "$INPUT" ]; then

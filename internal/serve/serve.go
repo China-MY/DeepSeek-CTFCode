@@ -27,6 +27,7 @@ import (
 	"ctfcode/internal/event"
 	"ctfcode/internal/jobs"
 	"ctfcode/internal/nilutil"
+	"ctfcode/internal/pentest"
 	"ctfcode/internal/provider"
 	"ctfcode/internal/store"
 )
@@ -56,6 +57,9 @@ type Server struct {
 	titlePrice      *provider.Pricing
 	titles          *titleCache
 	auth            *authGate // nil when auth is disabled
+	// Pentest service for AI渗透 system
+	pentestSvc *pentest.Service
+	pentestH   *pentest.Handler
 	// leases guards the active session file against other runtimes (a desktop
 	// window, another CLI). Wired by the serve CLI command with the keeper that
 	// already holds the startup session's lease; nil (tests, embedded use)
@@ -66,11 +70,14 @@ type Server struct {
 // New builds a Server. bc must be the controller's event sink.
 // serveCfg controls authentication (none, token, or password).
 func New(ctrl control.SessionAPI, bc *Broadcaster, serveCfg config.ServeConfig) *Server {
+	pts := pentest.NewService()
 	s := &Server{
-		ctrl:   ctrl,
-		bc:     bc,
-		titles: newTitleCache(ctrl.SessionDir()),
-		auth:   newAuthGate(serveCfg),
+		ctrl:       ctrl,
+		bc:         bc,
+		titles:     newTitleCache(ctrl.SessionDir()),
+		auth:       newAuthGate(serveCfg),
+		pentestSvc: pts,
+		pentestH:   pentest.NewHandler(pts),
 	}
 	s.initTitleProvider()
 	return s

@@ -1,7 +1,7 @@
-# DeepSeek-CTFCode
+# AI渗透系统 — Pentest Jarvis
 
 <p align="center">
-  <strong>🚀 CTF渗透测试多Agent协作系统 — 基于 DeepSeek 的智能渗透测试平台</strong>
+  <strong>🚀 基于AI大模型的自动化渗透测试平台 — 智能体驱动的全流程渗透测试</strong>
 </p>
 
 <p align="center">
@@ -10,20 +10,30 @@
 
 ## 概述
 
-DeepSeek-CTFCode 是一个基于 DeepSeek 大语言模型驱动的**多Agent协作渗透测试系统**。它将渗透测试全流程拆分为四个专业化 Agent 角色，通过 handoff 机制协同工作，实现从信息收集到漏洞利用到报告生成的全自动化。
+AI渗透系统（Pentest Jarvis）是一个基于 DeepSeek 大语言模型驱动的**智能体渗透测试平台**。它将渗透测试全流程拆解为：
 
-### 核心原则
-- **Python Exploit 才能证明漏洞可利用** — 自动化工具只能发现漏洞
-- **中危/低危漏洞禁止直接汇报** — 必须尝试危害提升后再定级
-- **严格报告格式** — Tab分隔的固定字段格式
+1. **任务拆解Agent** — 将用户指令分解为结构化的攻击任务树
+2. **动态执行Agent(侦察)** — 资产发现、端口扫描、指纹识别、CVE匹配
+3. **动态执行Agent(利用)** — Exploit开发、漏洞利用、Shell获取、数据提取
+4. **报告固化Agent** — 证据整理、漏洞卡片、报告生成、AI Skill固化
 
-## 架构
+通过手递手（handoff）协同机制，实现从信息侦察到漏洞发现、攻击链构建到报告生成的全流程自主化与智能化。
+
+### 核心特色
+- **智能渗透工作台** — 沉浸式的 Web 人机协同操作界面
+- **任务树管理** — 可视化的结构化攻击路径，动态生长与重构
+- **漏洞证据卡片** — 完整的可复现证据链（实锤证明）
+- **AI Skill固化** — 将攻击链固化为可复用的技能，支持批量验证
+- **CTF智能辅助** — 覆盖 Web/Pwn/Reverse/Misc 等主流题型
+- **报告自动生成** — 一键导出符合行业规范的专业渗透测试报告
+
+## 系统架构
 
 ```
-用户输入 → Planner(规划师)  — deepseek-v4-pro
-            ├─ handoff → Recon(侦察兵)    — 信息收集/端口扫描/指纹识别  — deepseek-v4-flash
-            ├─ handoff → Exploit(利用手)   — Python Exploit开发/实际利用 — deepseek-v4-flash
-            └─ handoff → Report(报告员)    — 证据整理/漏洞定级/报告输出 — deepseek-v4-pro
+用户输入 → 任务拆解Agent(Planner)  — deepseek-v4-pro
+            ├─ handoff → 动态执行Agent(侦察)   — 资产发现/端口扫描/指纹识别  — deepseek-v4-flash
+            ├─ handoff → 动态执行Agent(利用)   — Python Exploit开发/利用     — deepseek-v4-flash
+            └─ handoff → 报告固化Agent(Report) — 证据整理/漏洞卡片/报告输出 — deepseek-v4-pro
 ```
 
 | Agent | 模型 | 职责 | 工具权限 |

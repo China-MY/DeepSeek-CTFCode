@@ -4,25 +4,32 @@ All notable changes to the Go line (Reasonix 1.0+) are recorded here. The legacy
 `0.x` TypeScript history lives on the [`v1`](https://github.com/esengine/DeepSeek-Reasonix/tree/v1)
 branch.
 
-## Unreleased
+## [1.10.0] — 2026-07-13
 
 ### Added
 
-- **执行监督系统 (Adviser)**：参考 PentAGI Execution Monitoring，实时监控 Agent 工具调用模式。自动检测循环（相同工具连续调用N次）、错误重复、总调用阈值，通过 Steer 机制注入纠正指导。
-- **反射器 (Reflector)**：参考 PentAGI Reflector Integration，当 Agent 遇到重复失败时自动介入。支持 tool_error/empty_turn/plan_stuck/loop 四种失败模式分类，匹配 timeout/permission/connection 等错误模式生成根因分析和纠正建议。
-- **智能任务规划 (TaskPlanner)**：参考 PentAGI Intelligent Task Planning，在复杂任务执行前自动生成结构化计划。支持 Recon/Exploit/Web/Crypto/Reverse/Forensic 六类 CTF 场景的领域特定任务分解，含风险评估和工具建议。
-- **事件系统扩展**：新增 `AdviserAssessment`、`ReflectorAssessment`、`TaskPlan` 三种事件类型和完整的 payload 结构体，TUI 支持可视化展示。
-- **配置系统**：`AgentConfig` 新增 `ExecutionMonitorConfig`、`ReflectorConfig`、`TaskPlannerConfig` 三组 TOML 配置项。
+- **AI渗透系统重塑**：全面品牌升级为「AI渗透系统 — Pentest Jarvis」，基于《AI渗透系统白皮书》和产品介绍文档改造。
+- **新增 pentest 后端包**：`internal/pentest/` 包含 TaskNode（任务树节点）、VulnerabilityCard（漏洞证据卡片）、PentestReport（渗透报告）、AISkill（可复用攻击技能）、CTFChallenge（CTF挑战）等数据模型及完整 REST API（15个端点）。
+- **专业渗透工作台 Web UI**：完全重设计 index.html（1643行），包含：
+  - 仪表盘：渗透态势感知，实时显示目标数、漏洞数、任务进度、攻击路径
+  - 工作台：AI实时对话，流式展示推理过程与工具调用日志
+  - 任务树：可视化结构化攻击路径，节点状态跟踪
+  - 漏洞卡片：漏洞证据链展示（严重等级、Payload、Shell回显）
+  - 报告生成：一键导出渗透测试报告
+  - CTF挑战：全题型辅助面板
+- **双Agent协同架构**：提示词全面改写为「任务拆解Agent」+「动态执行Agent」+「报告固化Agent」架构。
 
 ### Changed
 
-- Agent 主循环集成 Adviser/Reflector/TaskPlanner 三组件，支持可配置启用。
-- Boot 装配流程新增 8 个配置读取助手函数。
-- ctfcode.toml 默认启用上述监控功能。
-- Agent runtime defaults now leave both executor and dedicated planner tool-call
-  rounds unlimited (`max_steps = 0`, `planner_max_steps = 0`). Step limits now
-  come from the user/global config only; project `reasonix.toml` does not
-  override them.
+- 品牌从 "ctfcode / Reasonix" 升级为 "AI渗透系统 — Pentest Jarvis"
+- 配置系统 (`ctfcode.toml`) 更新品牌名称和 Agent 角色描述
+- Agent 提示词 (`planner.md`, `recon.md`, `exploit.md`, `report.md`) 全面重写
+- README.md 更新为 AI渗透系统 架构说明
+- 环境变量从 `REASONIX_CTF_PHASE` 改为 `PENTEST_PHASE`
+
+### Fixed
+
+- Web UI 修复中危漏洞统计显示语法错误
 
 ## [1.0.0] — 2026-06-03
 
