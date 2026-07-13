@@ -38,7 +38,7 @@
 html,body{height:100%;overflow:hidden}
 body{
   font:14px/1.6 var(--sans);color:var(--fg);background:var(--bg);
-  -webkit-font-smoothing:antialiased;user-select:none;
+  -webkit-font-smoothing:antialiased;
 }
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
@@ -1437,7 +1437,6 @@ function updateDashboardFromPentest(stats){
   const badge=$('#vuln-badge'),tabBadge=$('#vuln-tab-badge');
   if(vulnCount>0){badge.textContent=vulnCount;badge.style.display='inline';tabBadge.textContent=vulnCount;tabBadge.style.display='inline';}
   else{badge.style.display='none';tabBadge.style.display='none';}
-}
 }
 function updateVulnBadge(stats){
   const count=stats?.vulnerabilities_found||0;
